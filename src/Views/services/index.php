@@ -9,7 +9,7 @@
         <?php endif; ?>
         <h2><?= htmlspecialchars($s['title']) ?></h2>
         <p><?= htmlspecialchars($s['description'] ?? '') ?></p>
-        <span class="price"><?= number_format($s['price'], 0, '', "\u00a0") ?> ₴</span><br><br>
+        <span class="price"><?= number_format($s['price'], 0, '', "\xc2\xa0") ?> ₴</span><br><br>
         <a href="/services/<?= $s['slug'] ?>">Детальніше →</a>
     </div>
 <?php endforeach; ?>

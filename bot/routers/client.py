@@ -54,7 +54,12 @@ async def confirm_order(target, state: FSMContext, chat_id: int, bot=None):
     )
 
     if isinstance(target, CallbackQuery):
-        await target.message.edit_text(text, reply_markup=kb.after_order())
+        # Якщо повідомлення з фото — не можна edit_text
+        if target.message.photo:
+            await target.message.delete()
+            await target.message.answer(text, reply_markup=kb.after_order())
+        else:
+            await target.message.edit_text(text, reply_markup=kb.after_order())
         actual_bot = target.bot
     else:
         try:
@@ -138,22 +143,22 @@ async def on_service_order(callback: CallbackQuery, state: FSMContext):
     await state.update_data(service_id=service_id, service_title=service['title'])
 
     saved_name = await users.get_saved_name(callback.from_user.id)
+    text = f"Послуга: <b>{escape(service['title'])}</b>\n\nЯк вас звати?"
+
     if saved_name:
         await state.update_data(name=saved_name)
         await confirm_order(callback, state, callback.from_user.id)
+        await callback.answer()
+        return
+
+    # Якщо повідомлення з фото — видаляємо і шлємо нове
+    if callback.message.photo:
+        await callback.message.delete()
+        await callback.message.answer(text, reply_markup=kb.cancel(kb.SERVICES))
     else:
-        # Якщо повідомлення з фото — не можна edit_text, треба answer
-        try:
-            await callback.message.edit_text(
-                f"Послуга: <b>{escape(service['title'])}</b>\n\nЯк вас звати?",
-                reply_markup=kb.cancel(kb.SERVICES)
-            )
-        except Exception:
-            await callback.message.answer(
-                f"Послуга: <b>{escape(service['title'])}</b>\n\nЯк вас звати?",
-                reply_markup=kb.cancel(kb.SERVICES)
-            )
-        await state.set_state(OrderForm.waiting_name)
+        await callback.message.edit_text(text, reply_markup=kb.cancel(kb.SERVICES))
+
+    await state.set_state(OrderForm.waiting_name)
     await callback.answer()
 
 @router.message(OrderForm.waiting_name)
@@ -194,11 +199,11 @@ async def on_my_orders(callback: CallbackQuery):
         text = "\n".join(lines)
 
     # Якщо поточне повідомлення з фото — не можна edit_text
-    try:
-        await callback.message.edit_text(text, reply_markup=kb.cancel(kb.MAIN))
-    except Exception:
+    if callback.message.photo:
+        await callback.message.delete()
         await callback.message.answer(text, reply_markup=kb.cancel(kb.MAIN))
-    await callback.answer()
+    else:
+        await callback.message.edit_text(text, reply_markup=kb.cancel(kb.MAIN))
 
 @router.message(F.text & ~F.text.startswith("/"))
 async def on_unknown(message: Message, state: FSMContext):

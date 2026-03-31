@@ -1,5 +1,4 @@
 .env
-storage/db.sqlite
-storage/*.log
+storage/
 bot/venv/
-public/uploads/storage/
+public/uploads/
