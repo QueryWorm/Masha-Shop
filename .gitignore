@@ -1,0 +1,5 @@
+.env
+storage/db.sqlite
+storage/*.log
+bot/venv/
+public/uploads/storage/
