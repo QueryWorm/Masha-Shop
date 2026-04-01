@@ -67,3 +67,33 @@ async def save_name(chat_id: int, name: str):
             )
         ''', (name, str(chat_id)))
         await db.commit()
+        
+async def link_telegram(token: str, chat_id: int) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute('''
+            SELECT * FROM link_tokens
+            WHERE token = ? AND expires_at > datetime("now")
+        ''', (token,)) as cur:
+            row = await cur.fetchone()
+
+        if not row:
+            return False
+
+        user_id = row['user_id']
+        await db.execute('DELETE FROM link_tokens WHERE token = ?', (token,))
+
+        async with db.execute('''
+            SELECT id FROM auth_providers
+            WHERE provider = "telegram" AND provider_id = ?
+        ''', (str(chat_id),)) as cur:
+            existing = await cur.fetchone()
+
+        if not existing:
+            await db.execute('''
+                INSERT OR IGNORE INTO auth_providers (user_id, provider, provider_id)
+                VALUES (?, "telegram", ?)
+            ''', (user_id, str(chat_id)))
+
+        await db.commit()
+        return True
